@@ -22,13 +22,18 @@ struct GradientLoginButton: View {
         Button {
             Task {
                 if viewModel.isAuthenticated {
-                    await viewModel.signOut()
+                    if viewModel.isGuestMode {
+                        // Show sign in sheet instead of signing out when in guest mode
+                        showAuth = true
+                    } else {
+                        await viewModel.signOut()
+                    }
                 } else {
                     showAuth = true
                 }
             }
         } label: {
-            Text(viewModel.isAuthenticated ? "Sign Out" : "Login")
+            Text(buttonText)
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundColor(.white)
                 .padding(.horizontal, 20)
@@ -67,6 +72,14 @@ struct GradientLoginButton: View {
             ) {
                 rotationAngle = 360
             }
+        }
+    }
+    
+    private var buttonText: String {
+        if viewModel.isAuthenticated {
+            return viewModel.isGuestMode ? "Sign In" : "Sign Out"
+        } else {
+            return "Sign In"
         }
     }
 }

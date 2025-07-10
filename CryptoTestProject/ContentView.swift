@@ -10,7 +10,7 @@ import UIKit
 
 struct ContentView: View {
     @StateObject private var viewModel = CryptoViewModel()
-    @StateObject private var authViewModel = AuthViewModel()
+    @EnvironmentObject var authViewModel: AuthViewModel
     
     var body: some View {
         Group {
@@ -46,65 +46,27 @@ struct MainTabView: View {
     @State private var selectedTab = 0
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // Crypto tab
-            NavigationView {
-                CryptoTabView(viewModel: cryptoViewModel, authViewModel: authViewModel)
-            }
-            .tabItem {
-                Label("Crypto", systemImage: "dollarsign.circle.fill")
-            }
-            .tag(0)
-            
-            // Checkers tab
-            CheckersView()
-                .tabItem {
-                    Label("Checkers", systemImage: "gamecontroller.fill")
+        CustomTabView(selectedTab: $selectedTab) { tab in
+            switch tab {
+            case 0:
+                // Crypto tab
+                NavigationView {
+                    CryptoTabView(viewModel: cryptoViewModel, authViewModel: authViewModel)
                 }
-                .tag(1)
-            
-            // Chess tab
-            ChessView()
-                .tabItem {
-                    Label("Chess", systemImage: "crown.fill")
-                }
-                .tag(2)
+            case 1:
+                // Checkers tab
+                CheckersView()
+            case 2:
+                // Chess tab
+                ChessView()
+            default:
+                EmptyView()
+            }
         }
         .onAppear {
             // Force refresh crypto data when tab view appears
             Task {
                 await cryptoViewModel.refresh()
-            }
-            
-            // Customize tab bar appearance
-            let tabBarAppearance = UITabBarAppearance()
-            tabBarAppearance.configureWithDefaultBackground()
-            
-            // Create gradient colors for the tab bar
-            let lightGray = UIColor(red: 0.95, green: 0.95, blue: 0.97, alpha: 1.0)
-            let mediumGray = UIColor(red: 0.9, green: 0.9, blue: 0.92, alpha: 1.0)
-            
-            // Create gradient layer
-            let gradientLayer = CAGradientLayer()
-            gradientLayer.colors = [lightGray.cgColor, mediumGray.cgColor]
-            gradientLayer.locations = [0.0, 1.0]
-            
-            // Create an image from the gradient layer
-            UIGraphicsBeginImageContextWithOptions(CGSize(width: UIScreen.main.bounds.width, height: 100), false, 0.0)
-            if let context = UIGraphicsGetCurrentContext() {
-                gradientLayer.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height: 100)
-                gradientLayer.render(in: context)
-                let gradientImage = UIGraphicsGetImageFromCurrentImageContext()
-                UIGraphicsEndImageContext()
-                
-                // Set the gradient image as the tab bar background
-                tabBarAppearance.backgroundImage = gradientImage
-            }
-            
-            // Apply the appearance
-            UITabBar.appearance().standardAppearance = tabBarAppearance
-            if #available(iOS 15.0, *) {
-                UITabBar.appearance().scrollEdgeAppearance = tabBarAppearance
             }
         }
     }
@@ -205,4 +167,5 @@ struct CryptoTabView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(AuthViewModel())
 }

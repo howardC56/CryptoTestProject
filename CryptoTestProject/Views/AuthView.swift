@@ -65,6 +65,9 @@ struct AuthView: View {
                 // Action Button
                 Button(action: {
                     Task {
+                        // Ensure we're not in guest mode when signing in/up
+                        viewModel.isGuestMode = false
+                        
                         if isSignUp {
                             await viewModel.signUp()
                         } else {
