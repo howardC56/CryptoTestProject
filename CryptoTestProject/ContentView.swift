@@ -75,6 +75,7 @@ struct MainTabView: View {
 struct CryptoTabView: View {
     @ObservedObject var viewModel: CryptoViewModel
     @ObservedObject var authViewModel: AuthViewModel
+    @State private var isRefreshing = false
     
     var body: some View {
         Group {
@@ -83,17 +84,6 @@ struct CryptoTabView: View {
                     ProgressView("Loading cryptocurrencies...")
                         .progressViewStyle(.circular)
                         .padding()
-                    
-                    Button("Retry") {
-                        Task {
-                            await viewModel.refresh()
-                        }
-                    }
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-                    .padding(.top, 20)
                 }
             } else if let error = viewModel.error {
                 VStack {
@@ -144,11 +134,14 @@ struct CryptoTabView: View {
                 }
                 .listStyle(PlainListStyle())
                 .refreshable {
+                    isRefreshing = true
                     await viewModel.refresh()
+                    isRefreshing = false
                 }
             }
         }
-        .navigationTitle("Watchlist")
+        .navigationTitle("Crypto")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 GradientLoginButton(viewModel: authViewModel)
@@ -159,6 +152,19 @@ struct CryptoTabView: View {
             if viewModel.cryptos.isEmpty {
                 Task {
                     await viewModel.fetchCryptos()
+                }
+            }
+        }
+        // Update isRefreshing state when auto-refresh happens
+        .onChange(of: viewModel.refreshTrigger) { _ in
+            withAnimation {
+                isRefreshing = true
+                
+                // Hide the indicator after a short delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                    withAnimation {
+                        isRefreshing = false
+                    }
                 }
             }
         }

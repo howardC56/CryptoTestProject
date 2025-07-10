@@ -89,7 +89,7 @@ struct SplashView: View {
                                         .stroke(Color.white.opacity(0.2), lineWidth: 1)
                                 )
                             
-                            Text("Sign In / Create Account")
+                            Text("Sign In To Access All Features")
                                 .foregroundColor(.white)
                                 .font(.system(size: 18, weight: .semibold))
                         }

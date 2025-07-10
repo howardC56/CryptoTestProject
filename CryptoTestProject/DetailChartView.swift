@@ -109,6 +109,5 @@ struct DetailChartView: View {
                 }
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: prices)
     }
 } 

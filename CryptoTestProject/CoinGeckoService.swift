@@ -9,7 +9,7 @@ enum CoinGeckoError: Error {
     case invalidCandleData
 }
 
-struct CandleData: Identifiable {
+struct CandleData: Identifiable, Equatable {
     let id: UUID
     let timestamp: Double
     let open: Double
@@ -43,6 +43,17 @@ struct CandleData: Identifiable {
         self.low = low
         self.close = close
         self.volume = volume
+    }
+    
+    // Implement Equatable
+    static func == (lhs: CandleData, rhs: CandleData) -> Bool {
+        // Compare all relevant fields except id (which is randomly generated)
+        return lhs.timestamp == rhs.timestamp &&
+               lhs.open == rhs.open &&
+               lhs.high == rhs.high &&
+               lhs.low == rhs.low &&
+               lhs.close == rhs.close &&
+               lhs.volume == rhs.volume
     }
 }
 
@@ -243,6 +254,35 @@ actor CoinGeckoService {
         } catch {
             print("🚫 Network error: \(error)")
             throw CoinGeckoError.networkError(error)
+        }
+    }
+    
+    func refreshCryptoData(existingCryptos: [Crypto]) async throws -> [Crypto] {
+        // Get fresh data from API
+        let freshCryptos = try await fetchTopCryptos()
+        
+        // Create a dictionary of existing cryptos by ID for quick lookup
+        let existingDict = Dictionary(uniqueKeysWithValues: existingCryptos.map { ($0.id, $0) })
+        
+        // Map fresh data while preserving logo and name from existing data
+        return freshCryptos.map { freshCrypto in
+            if let existingCrypto = existingDict[freshCrypto.id] {
+                // Create a new crypto object with:
+                // - Preserved logo (image) and name from existing data
+                // - Updated price, change percentage, and sparkline data from fresh data
+                return Crypto(
+                    id: freshCrypto.id,
+                    symbol: freshCrypto.symbol,
+                    name: existingCrypto.name,  // Preserve name
+                    image: existingCrypto.image, // Preserve image
+                    currentPrice: freshCrypto.currentPrice, // Update price
+                    priceChangePercentage24h: freshCrypto.priceChangePercentage24h, // Update change
+                    sparklineIn7D: freshCrypto.sparklineIn7D // Update sparkline
+                )
+            } else {
+                // If it's a new crypto not in the existing list, use it as is
+                return freshCrypto
+            }
         }
     }
 } 

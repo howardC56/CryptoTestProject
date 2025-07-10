@@ -9,49 +9,12 @@ private extension NumberFormatter {
         return formatter
     }()
     
-    static let percentage: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .percent
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter
-    }()
-    
     static let decimal: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = 0
         return formatter
     }()
-}
-
-// MARK: - Price Header View
-struct PriceHeaderView: View {
-    let detail: CoinGeckoService.CryptoDetail
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(NumberFormatter.currency.string(from: NSNumber(value: detail.market_data.current_price["usd"] ?? 0)) ?? "")
-                .font(.system(size: 32, weight: .bold))
-            
-            HStack {
-                let priceChange = detail.market_data.price_change_percentage_24h ?? 0
-                Text(NumberFormatter.percentage.string(from: NSNumber(value: priceChange / 100)) ?? "")
-                    .foregroundColor(priceChange >= 0 ? .green : .red)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        (priceChange >= 0 ? Color.green : Color.red)
-                            .opacity(0.2)
-                            .cornerRadius(6)
-                    )
-                Text("24h")
-                    .foregroundColor(.gray)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal)
-    }
 }
 
 // MARK: - Crypto Header View
@@ -165,57 +128,10 @@ struct TimeRangeSelectorView: View {
     }
 }
 
-// MARK: - Chart View Container
-struct ChartContainer: View {
-    let isLoading: Bool
-    let error: Error?
-    let candleData: [CandleData]
-    let minPrice: Double
-    let maxPrice: Double
-    let onRetry: () async -> Void
-    
-    var body: some View {
-        VStack {
-            if isLoading {
-                ProgressView()
-                    .frame(height: 300)
-            } else if let error = error {
-                VStack(spacing: 8) {
-                    Text("Failed to load chart data")
-                        .foregroundColor(.red)
-                    Text(error.localizedDescription)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                    Button("Try Again") {
-                        Task {
-                            await onRetry()
-                        }
-                    }
-                }
-                .frame(height: 300)
-            } else if !candleData.isEmpty {
-                CandlestickChartView(
-                    data: candleData,
-                    minPrice: minPrice,
-                    maxPrice: maxPrice
-                )
-                .frame(height: 300)
-                .padding(.horizontal, 5)
-            } else {
-                Text("No chart data available")
-                    .foregroundColor(.gray)
-                    .frame(height: 300)
-            }
-        }
-        .background(Color(uiColor: .systemBackground))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.1), radius: 10)
-    }
-}
-
 // MARK: - Main View
 struct CryptoDetailView: View {
     @StateObject var viewModel: CryptoDetailViewModel
+    @State private var flashUpdate = false
     
     var body: some View {
         ScrollView {
@@ -229,7 +145,9 @@ struct CryptoDetailView: View {
                         selectedRange: viewModel.selectedTimeRange,
                         onRangeSelected: { range in
                             viewModel.selectedTimeRange = range
-                            await viewModel.fetchCryptoDetail()
+                            Task {
+                                await viewModel.fetchCryptoDetail()
+                            }
                         }
                     )
                     
@@ -242,16 +160,39 @@ struct CryptoDetailView: View {
                         onRetry: viewModel.fetchCryptoDetail
                     )
                     .padding(.bottom, 20) // Add extra padding to prevent chart cutoff
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.blue, lineWidth: flashUpdate ? 1.5 : 0)
+                            .opacity(flashUpdate ? 0.7 : 0)
+                    )
                     
                     MarketStatsView(detail: detail)
+                        .contentTransition(.opacity)
+                        .animation(.easeInOut, value: detail.market_data.market_cap["usd"])
                 }
             }
             .padding(.vertical)
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            await viewModel.fetchCryptoDetail()
+        .onAppear {
+            Task {
+                await viewModel.fetchCryptoDetail()
+            }
         }
+        .onChange(of: viewModel.refreshTrigger) { _ in
+            // Flash update animation
+            withAnimation(.easeInOut(duration: 0.3)) {
+                flashUpdate = true
+            }
+            
+            // Reset animation after delay
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                withAnimation {
+                    flashUpdate = false
+                }
+            }
+        }
+        .navigationTitle(viewModel.crypto.name)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

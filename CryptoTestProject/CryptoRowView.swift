@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CryptoRowView: View {
     let crypto: Crypto
+    @State private var isUpdating = false
     
     var changeColor: Color {
         if crypto.priceChangePercentage24h > 0 {
@@ -34,12 +35,14 @@ struct CryptoRowView: View {
             Spacer()
             MiniLineChart(prices: crypto.sparklineIn7D.price, lineColor: changeColor)
                 .frame(width: 60, height: 24)
-                .animation(.easeInOut(duration: 0.3), value: crypto.sparklineIn7D.price)
+                .id("chart-\(crypto.id)-\(UUID())")
             VStack(alignment: .trailing) {
                 Text(String(format: "$%.2f", crypto.currentPrice))
                     .font(.headline)
-                    .contentTransition(.numericText(value: crypto.currentPrice))
-                    .animation(.spring(duration: 0.5, bounce: 0.2), value: crypto.currentPrice)
+                    .id("price-\(crypto.id)-\(UUID())")
+                    .onChange(of: crypto.currentPrice) { _ in
+                        flashPrice()
+                    }
                 Text(String(format: "%+.2f%%", crypto.priceChangePercentage24h))
                     .font(.caption)
                     .foregroundColor(.white)
@@ -47,10 +50,23 @@ struct CryptoRowView: View {
                     .padding(.vertical, 2)
                     .background(changeColor)
                     .cornerRadius(6)
-                    .contentTransition(.numericText(value: crypto.priceChangePercentage24h))
-                    .animation(.spring(duration: 0.5, bounce: 0.2), value: crypto.priceChangePercentage24h)
+                    .id("change-\(crypto.id)-\(UUID())")
             }
         }
         .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isUpdating ? changeColor.opacity(0.1) : Color.clear)
+        )
+        .animation(.easeInOut(duration: 0.5), value: isUpdating)
+    }
+    
+    private func flashPrice() {
+        isUpdating = true
+        
+        // Reset after animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            isUpdating = false
+        }
     }
 } 
