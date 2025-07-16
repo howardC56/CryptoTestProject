@@ -1,208 +1,6 @@
 import SwiftUI
-
-// Game piece states
-enum SquareState {
-    case empty
-    case red
-    case black
-    case redKing
-    case blackKing
-    
-    var color: Color {
-        switch self {
-        case .empty:
-            return .clear
-        case .red, .redKing:
-            return .red
-        case .black, .blackKing:
-            return .black
-        }
-    }
-    
-    var isKing: Bool {
-        self == .redKing || self == .blackKing
-    }
-}
-
-// Piece types for winner determination
-enum PieceType {
-    case red
-    case black
-}
-
-// Game model to hold state and logic
-class CheckersGameModel: ObservableObject {
-    @Published var board = Array(repeating: Array(repeating: SquareState.empty, count: 8), count: 8)
-    @Published var selectedPiece: (Int, Int)? = nil
-    @Published var isRedTurn = true
-    @Published var redPiecesCount = 12
-    @Published var blackPiecesCount = 12
-    @Published var winner: PieceType? = nil
-    
-    // Constants
-    let darkSquareColor = Color(red: 0.2, green: 0.1, blue: 0.3)
-    let lightSquareColor = Color(red: 0.8, green: 0.8, blue: 0.9)
-    
-    init() {
-        resetGame()
-    }
-    
-    // Initialize the game board
-    func resetGame() {
-        board = Array(repeating: Array(repeating: .empty, count: 8), count: 8)
-        
-        // Place black pieces (top of board)
-        for row in 0..<3 {
-            for col in 0..<8 {
-                if (row + col) % 2 == 1 {
-                    board[row][col] = .black
-                }
-            }
-        }
-        
-        // Place red pieces (bottom of board)
-        for row in 5..<8 {
-            for col in 0..<8 {
-                if (row + col) % 2 == 1 {
-                    board[row][col] = .red
-                }
-            }
-        }
-        
-        selectedPiece = nil
-        isRedTurn = true
-        redPiecesCount = 12
-        blackPiecesCount = 12
-        winner = nil
-    }
-    
-    // Handle tapping on a square
-    func handleTap(row: Int, col: Int) {
-        // If there's already a winner, don't allow moves
-        if winner != nil {
-            return
-        }
-        
-        // If a piece is already selected
-        if let (selectedRow, selectedCol) = selectedPiece {
-            // If tapping on the same piece, deselect it
-            if selectedRow == row && selectedCol == col {
-                selectedPiece = nil
-                return
-            }
-            
-            // Try to move the selected piece
-            if isValidMove(from: (selectedRow, selectedCol), to: (row, col)) {
-                movePiece(from: (selectedRow, selectedCol), to: (row, col))
-                selectedPiece = nil
-                
-                // Check for winner
-                if redPiecesCount == 0 {
-                    winner = .black
-                } else if blackPiecesCount == 0 {
-                    winner = .red
-                }
-                
-                return
-            }
-        }
-        
-        // Select a piece if it's the player's turn
-        let currentPiece = board[row][col]
-        if (isRedTurn && (currentPiece == .red || currentPiece == .redKing)) ||
-           (!isRedTurn && (currentPiece == .black || currentPiece == .blackKing)) {
-            selectedPiece = (row, col)
-        }
-    }
-    
-    // Check if a move is valid
-    func isValidMove(from: (Int, Int), to: (Int, Int)) -> Bool {
-        let (fromRow, fromCol) = from
-        let (toRow, toCol) = to
-        
-        // Must move to an empty square
-        if board[toRow][toCol] != .empty {
-            return false
-        }
-        
-        // Must move diagonally
-        if abs(toRow - fromRow) != abs(toCol - fromCol) {
-            return false
-        }
-        
-        let piece = board[fromRow][fromCol]
-        
-        // Regular pieces can only move forward (unless they're kings)
-        if piece == .red && toRow >= fromRow && piece != .redKing {
-            return false
-        }
-        
-        if piece == .black && toRow <= fromRow && piece != .blackKing {
-            return false
-        }
-        
-        // Can move 1 square diagonally
-        if abs(toRow - fromRow) == 1 && abs(toCol - fromCol) == 1 {
-            return true
-        }
-        
-        // Can jump over opponent's piece
-        if abs(toRow - fromRow) == 2 && abs(toCol - fromCol) == 2 {
-            let jumpedRow = (fromRow + toRow) / 2
-            let jumpedCol = (fromCol + toCol) / 2
-            let jumpedPiece = board[jumpedRow][jumpedCol]
-            
-            // Red can jump over black
-            if (piece == .red || piece == .redKing) && (jumpedPiece == .black || jumpedPiece == .blackKing) {
-                return true
-            }
-            
-            // Black can jump over red
-            if (piece == .black || piece == .blackKing) && (jumpedPiece == .red || jumpedPiece == .redKing) {
-                return true
-            }
-        }
-        
-        return false
-    }
-    
-    // Move a piece on the board
-    func movePiece(from: (Int, Int), to: (Int, Int)) {
-        let (fromRow, fromCol) = from
-        let (toRow, toCol) = to
-        
-        // Move the piece
-        var piece = board[fromRow][fromCol]
-        board[fromRow][fromCol] = .empty
-        
-        // Check if piece should be promoted to king
-        if piece == .red && toRow == 0 {
-            piece = .redKing
-        } else if piece == .black && toRow == 7 {
-            piece = .blackKing
-        }
-        
-        board[toRow][toCol] = piece
-        
-        // If it was a jump, remove the jumped piece
-        if abs(toRow - fromRow) == 2 {
-            let jumpedRow = (fromRow + toRow) / 2
-            let jumpedCol = (fromCol + toCol) / 2
-            
-            let jumpedPiece = board[jumpedRow][jumpedCol]
-            if jumpedPiece == .red || jumpedPiece == .redKing {
-                redPiecesCount -= 1
-            } else if jumpedPiece == .black || jumpedPiece == .blackKing {
-                blackPiecesCount -= 1
-            }
-            
-            board[jumpedRow][jumpedCol] = .empty
-        }
-        
-        // Switch turns
-        isRedTurn.toggle()
-    }
-}
+// Import the model files
+import Foundation
 
 // Single square view component
 struct CheckerSquareView: View {
@@ -276,22 +74,44 @@ struct GameStatusView: View {
     @ObservedObject var gameModel: CheckersGameModel
     
     var body: some View {
-        HStack {
-            Text("Turn: \(gameModel.isRedTurn ? "Red" : "Black")")
-                .foregroundColor(gameModel.isRedTurn ? .red : .black)
-                .font(.headline)
-                .fontWeight(.bold)
+        VStack(spacing: 8) {
+            HStack {
+                Text("Turn: \(gameModel.isRedTurn ? "Red (You)" : "Black" + (gameModel.aiDifficulty != .none ? " (AI)" : ""))")
+                    .foregroundColor(gameModel.isRedTurn ? .red : .black)
+                    .font(.headline)
+                    .fontWeight(.bold)
+                
+                Spacer()
+                
+                if gameModel.isAIThinking {
+                    HStack {
+                        Text("AI thinking")
+                            .foregroundColor(.black)
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .scaleEffect(0.8)
+                    }
+                }
+            }
             
-            Spacer()
-            
-            Text("Red: \(gameModel.redPiecesCount)")
-                .foregroundColor(.red)
-                .fontWeight(.bold)
-                .padding(.horizontal)
-            
-            Text("Black: \(gameModel.blackPiecesCount)")
-                .foregroundColor(.black)
-                .fontWeight(.bold)
+            HStack {
+                Text("Red: \(gameModel.redPiecesCount)")
+                    .foregroundColor(.red)
+                    .fontWeight(.bold)
+                    .padding(.horizontal)
+                
+                Text("Black: \(gameModel.blackPiecesCount)")
+                    .foregroundColor(.black)
+                    .fontWeight(.bold)
+                
+                Spacer()
+                
+                if gameModel.gameInProgress {
+                    Text("Game mode: \(gameModel.aiDifficulty == .none ? "2 Players" : "vs AI")")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
         }
         .padding()
     }
@@ -310,6 +130,93 @@ struct WinnerView: View {
             .background(Color.white.opacity(0.8))
             .cornerRadius(10)
             .shadow(radius: 5)
+    }
+}
+
+// Game options modal view
+struct GameOptionsModalView: View {
+    @ObservedObject var gameModel: CheckersGameModel
+    @State private var selectedMode: AIDifficulty = .none
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Choose Game Mode")
+                .font(.title)
+                .fontWeight(.bold)
+            
+            VStack(alignment: .leading, spacing: 15) {
+                Button(action: {
+                    selectedMode = .none
+                }) {
+                    HStack {
+                        Image(systemName: selectedMode == .none ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(selectedMode == .none ? .blue : .gray)
+                        
+                        VStack(alignment: .leading) {
+                            Text("2 Players")
+                                .font(.headline)
+                            Text("Play against a friend on the same device")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(10)
+                }
+                
+                Button(action: {
+                    selectedMode = .medium
+                }) {
+                    HStack {
+                        Image(systemName: selectedMode == .medium ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(selectedMode == .medium ? .blue : .gray)
+                        
+                        VStack(alignment: .leading) {
+                            Text("Play vs AI")
+                                .font(.headline)
+                            Text("Play against a medium difficulty AI")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(10)
+                }
+            }
+            .padding(.vertical)
+            
+            Button(action: {
+                gameModel.aiDifficulty = selectedMode
+                gameModel.startNewGame()
+            }) {
+                Text("Start Game")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        LinearGradient(
+                            colors: [.blue, .purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(15)
+            }
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(20)
+        .shadow(radius: 10)
+        .padding(.horizontal, 30)
+        .onAppear {
+            // Set the initial selected mode to match the current game model
+            selectedMode = gameModel.aiDifficulty
+        }
     }
 }
 
@@ -357,6 +264,15 @@ struct CheckersView: View {
             if let winner = gameModel.winner {
                 WinnerView(winner: winner)
                     .position(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2)
+            }
+            
+            // Game options modal
+            if gameModel.showGameOptionsModal {
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .overlay(
+                        GameOptionsModalView(gameModel: gameModel)
+                    )
             }
         }
     }

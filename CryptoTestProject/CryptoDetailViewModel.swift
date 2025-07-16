@@ -18,7 +18,7 @@ class CryptoDetailViewModel: ObservableObject {
     
     init(crypto: Crypto) {
         self.crypto = crypto
-        setupRefreshTimer()
+        // Don't start the timer automatically - we'll start it when the view appears
     }
     
     deinit {
@@ -32,7 +32,25 @@ class CryptoDetailViewModel: ObservableObject {
         }
     }
     
+    // Start updates - fetch data and setup auto-refresh
+    func startUpdates() {
+        print("🔄 Starting crypto detail updates for \(crypto.id)")
+        Task {
+            await fetchCryptoDetail()
+        }
+        setupRefreshTimer()
+    }
+    
+    // Stop updates - cancel auto-refresh
+    func stopUpdates() {
+        print("🛑 Stopping crypto detail updates for \(crypto.id)")
+        stopRefreshTimer()
+    }
+    
     private func setupRefreshTimer() {
+        // Cancel any existing timer first
+        stopRefreshTimer()
+        
         refreshTimer = Timer.publish(every: 10, on: .main, in: .common)
         timerCancellable = refreshTimer?
             .autoconnect()
@@ -41,12 +59,16 @@ class CryptoDetailViewModel: ObservableObject {
                     await self?.refreshPrice()
                 }
             }
+        
+        print("⏱️ Detail refresh timer started for \(crypto.id)")
     }
     
     private func stopRefreshTimer() {
-        // This function is already isolated to the main actor because of the class annotation
-        timerCancellable?.cancel()
-        timerCancellable = nil
+        if timerCancellable != nil {
+            timerCancellable?.cancel()
+            timerCancellable = nil
+            print("⏱️ Detail refresh timer stopped for \(crypto.id)")
+        }
     }
     
     func refreshPrice() async {

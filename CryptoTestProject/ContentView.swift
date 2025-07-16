@@ -49,25 +49,42 @@ struct MainTabView: View {
         CustomTabView(selectedTab: $selectedTab) { tab in
             switch tab {
             case 0:
-                // Crypto tab
-                NavigationView {
-                    CryptoTabView(viewModel: cryptoViewModel, authViewModel: authViewModel)
-                }
+            // Crypto tab
+            NavigationView {
+                CryptoTabView(viewModel: cryptoViewModel, authViewModel: authViewModel)
+            }
             case 1:
-                // Checkers tab
-                CheckersView()
+            // Checkers tab
+            CheckersView()
             case 2:
-                // Chess tab
-                ChessView()
+            // Chess tab
+            ChessView()
             default:
                 EmptyView()
             }
         }
+        .onChange(of: selectedTab) { newTab in
+            if newTab == 0 {
+                // User navigated to crypto tab, start updates
+                print("📱 Navigated to Crypto tab - starting updates")
+                cryptoViewModel.startUpdates()
+            } else {
+                // User navigated away from crypto tab, stop updates
+                print("📱 Navigated away from Crypto tab - stopping updates")
+                cryptoViewModel.stopUpdates()
+                }
+        }
         .onAppear {
-            // Force refresh crypto data when tab view appears
-            Task {
-                await cryptoViewModel.refresh()
+            // When the tab view appears, only start updates if on crypto tab
+            if selectedTab == 0 {
+                print("📱 MainTabView appeared with Crypto tab selected - starting updates")
+                cryptoViewModel.startUpdates()
             }
+        }
+        .onDisappear {
+            // When the tab view disappears, stop updates
+            print("📱 MainTabView disappeared - stopping updates")
+            cryptoViewModel.stopUpdates()
         }
     }
 }
@@ -149,11 +166,14 @@ struct CryptoTabView: View {
             }
         }
         .onAppear {
-            if viewModel.cryptos.isEmpty {
-                Task {
-                    await viewModel.fetchCryptos()
-                }
-            }
+            // Start updates when the crypto tab view appears
+            print("📱 CryptoTabView appeared - starting updates")
+            viewModel.startUpdates()
+        }
+        .onDisappear {
+            // Stop updates when the crypto tab view disappears
+            print("📱 CryptoTabView disappeared - stopping updates")
+            viewModel.stopUpdates()
         }
         // Update isRefreshing state when auto-refresh happens
         .onChange(of: viewModel.refreshTrigger) { _ in
