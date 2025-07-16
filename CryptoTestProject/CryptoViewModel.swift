@@ -14,7 +14,7 @@ class CryptoViewModel: ObservableObject {
     
     nonisolated init() {
         // Initialize without starting the timer
-        // Timer will be started in onAppear
+        // Timer will be started when needed
     }
     
     deinit {
@@ -45,11 +45,35 @@ class CryptoViewModel: ObservableObject {
             userInfo: nil,
             repeats: true
         )
+        
+        print("⏱️ Auto-refresh timer started")
     }
     
     func stopAutoRefresh() {
-        refreshTimer?.invalidate()
-        refreshTimer = nil
+        if refreshTimer != nil {
+            refreshTimer?.invalidate()
+            refreshTimer = nil
+            print("⏱️ Auto-refresh timer stopped")
+        }
+    }
+    
+    // Start updates - fetch data and setup auto-refresh
+    func startUpdates() {
+        print("🔄 Starting crypto updates")
+        Task {
+            if cryptos.isEmpty {
+                await fetchCryptos()
+            } else {
+                await refreshCryptoData()
+            }
+        }
+        setupAutoRefresh()
+    }
+    
+    // Stop updates - cancel auto-refresh
+    func stopUpdates() {
+        print("🛑 Stopping crypto updates")
+        stopAutoRefresh()
     }
     
     func fetchCryptos() async {
@@ -61,11 +85,14 @@ class CryptoViewModel: ObservableObject {
         error = nil
         
         do {
+            print("🔄 Fetching crypto data from API")
             let cryptos = try await service.fetchTopCryptos()
             self.cryptos = cryptos
             // Toggle the refresh trigger to notify views that data has been updated
             self.refreshTrigger.toggle()
+            print("✅ Successfully fetched crypto data")
         } catch {
+            print("❌ Error fetching crypto data: \(error)")
             self.error = error
         }
         
@@ -74,7 +101,7 @@ class CryptoViewModel: ObservableObject {
         }
     }
     
-    // New method to refresh crypto data while preserving logo and title
+    // Refresh crypto data while preserving logo and title
     func refreshCryptoData() async {
         // Only proceed if we have existing data
         guard !cryptos.isEmpty else {
@@ -97,21 +124,13 @@ class CryptoViewModel: ObservableObject {
         }
     }
     
-    // Call this when the view appears
+    // Legacy methods - now just delegate to the new methods
     func onAppear() {
-        Task {
-            if cryptos.isEmpty {
-                await fetchCryptos()
-            } else {
-                await refreshCryptoData()
-            }
-        }
-        setupAutoRefresh() // Ensure timer is running
+        startUpdates()
     }
     
-    // Call this when the view disappears
     func onDisappear() {
-        stopAutoRefresh()
+        stopUpdates()
     }
     
     // Call this for manual refresh

@@ -132,6 +132,7 @@ struct TimeRangeSelectorView: View {
 struct CryptoDetailView: View {
     @StateObject var viewModel: CryptoDetailViewModel
     @State private var flashUpdate = false
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
         ScrollView {
@@ -174,8 +175,20 @@ struct CryptoDetailView: View {
             .padding(.vertical)
         }
         .onAppear {
-            Task {
-                await viewModel.fetchCryptoDetail()
+            print("📱 CryptoDetailView appeared - starting updates")
+            viewModel.startUpdates()
+        }
+        .onDisappear {
+            print("📱 CryptoDetailView disappeared - stopping updates")
+            viewModel.stopUpdates()
+        }
+        .onChange(of: scenePhase) { newPhase in
+            if newPhase == .active {
+                print("📱 App became active - starting detail updates")
+                viewModel.startUpdates()
+            } else if newPhase == .background {
+                print("📱 App went to background - stopping detail updates")
+                viewModel.stopUpdates()
             }
         }
         .onChange(of: viewModel.refreshTrigger) { _ in

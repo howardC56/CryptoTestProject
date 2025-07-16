@@ -111,4 +111,4 @@ class AuthViewModel: ObservableObject {
         isAuthenticated = true
         print("Continuing as guest, isGuestMode: \(isGuestMode), isAuthenticated: \(isAuthenticated)")
     }
-} 
+}
